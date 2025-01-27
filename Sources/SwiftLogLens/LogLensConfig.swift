@@ -12,6 +12,6 @@ public actor LogLensConfig {
     
     private init(){}
     
-    static var storeCopyOnWrite: Bool = false
+    public static var storeCopyOnWrite: Bool = false
     
 }
