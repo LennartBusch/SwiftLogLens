@@ -20,7 +20,7 @@ public struct LogLens{
         self.category = category
     }
     
-    func log(level: OSLogType = .default, _ message: String){
+    public func log(level: OSLogType = .default, _ message: String){
         osLogger.log(level: level, "\(message)")
         let date = Date()
         DispatchQueue.main.async {[category] in

@@ -8,7 +8,7 @@
 import Foundation
 
 
-actor LogLensConfig {
+public actor LogLensConfig {
     
     private init(){}
     
