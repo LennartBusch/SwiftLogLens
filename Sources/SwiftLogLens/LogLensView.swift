@@ -105,11 +105,4 @@ public struct LogLensView<Category: LogCategory>: View {
     
 }
 
-//
-//@available(iOS 16.0,*)
-//#Preview {
-//    NavigationStack{
-//        EventLogView()
-//    }
-//}
 
