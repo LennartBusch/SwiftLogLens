@@ -1,6 +1,3 @@
-// The Swift Programming Language
-// https://docs.swift.org/swift-book
-
 import Foundation
 import OSLog
 import SwiftUI
@@ -16,15 +13,23 @@ public struct LogLens{
     
 
     public init(category: any LogCategory){
-        osLogger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: category.rawValue)
+        osLogger = Logger(subsystem: LogLensConfig.defaultSubSystem, category: category.rawValue)
         self.category = category
     }
     
+    /// Logs a message
+    /// - Parameters:
+    ///   - level: The level of the logmessage
+    ///   - message: The mesage
+    ///
+    ///   LogLens log function has no option for privacy redaction. All arguments will printed to the logstore in plaintext
     public func log(level: OSLogType = .default, _ message: String){
         osLogger.log(level: level, "\(message)")
         let date = Date()
-        DispatchQueue.main.async {[category] in
-            LogLens.logs.append((date, category, level, message))
+        if LogLensConfig.storeCopyOnWrite{
+            DispatchQueue.main.async {[category] in
+                LogLens.logs.append((date, category, level, message))
+            }            
         }
     }
 }
