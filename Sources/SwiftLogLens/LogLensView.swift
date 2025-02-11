@@ -51,7 +51,7 @@ public struct LogLensView<Category: LogCategory>: View {
                     .tint(.gray)
                     .font(.headline)
                     .foregroundStyle(Color.black)
-                    if LogLensConfig.storeCopyOnWrite{
+                    if !LogLensConfig.storeCopyOnWrite{
                         if !viewModel.fetching{
                             Button(action: {
 #if os(iOS)
