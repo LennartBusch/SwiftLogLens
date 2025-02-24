@@ -4,7 +4,7 @@ import SwiftUI
 
 typealias CustomLog = (timestamp: Date,category: any LogCategory,type: OSLogType,message: String)
 
-public struct LogLens{
+public struct LogLens: Sendable{
     
     public let osLogger: Logger
     let category: any LogCategory

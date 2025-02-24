@@ -47,10 +47,10 @@ logger.log(level: .error, "An error message")
 LogLens allows customization of the default settings
 ```swift 
 // Changes the identifier of the subsystem LogLens writes to. Defaults to the Bundle identifier
-LogLensConfig.defaultSubSystem = "My Subsystem"
+LogLensConfig.setSubsystem("My Subsystem")
 
 //Necessary on watchOS, when writing to memory. Defaults to false
-LogLensConfig.storeCopyOnWrite = true
+LogLensConfig.setStoreOnWrite(true)
 ```
 
 
