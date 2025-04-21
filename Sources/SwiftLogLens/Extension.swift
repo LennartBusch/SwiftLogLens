@@ -19,7 +19,7 @@ extension Date{
 
 extension OSLogEntry{
     
-    var levelColor: Color{
+    public var levelColor: Color{
         guard let log = self as? OSLogEntryLog else {return .clear}
         switch log.level{
         case .undefined, .debug:
@@ -35,7 +35,7 @@ extension OSLogEntry{
         }
     }
     
-    var type: OSLogType{
+    public var type: OSLogType{
         guard let log = self as? OSLogEntryLog else {return .default}
         switch log.level{
         case .undefined:
@@ -53,9 +53,14 @@ extension OSLogEntry{
         }
     }
     
-    var categoryString: String{
+    public var categoryString: String{
         guard let log = self as? OSLogEntryLog else {return ""}
         return log.category
+    }
+    
+    public var levelDescription: String{
+        guard let log = self as? OSLogEntryLog else {return ""}
+        return log.levelDescription
     }
     
     func toCustomLog(type: any LogCategory.Type)->CustomLog?{
