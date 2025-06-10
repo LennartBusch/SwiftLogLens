@@ -8,7 +8,6 @@
 import Foundation
 import OSLog
 
-
 public actor LogLensConfig {
     
     private init(){}
@@ -18,7 +17,7 @@ public actor LogLensConfig {
     static var storeCopyOnWrite: Bool = false
     
     /// The defaults subsystem loglens writes to
-    static var defaultSubSystem: String = Bundle.main.bundleIdentifier ?? "LogLens"
+    public static var defaultSubSystem: String = Bundle.main.bundleIdentifier ?? "LogLens"
     
     public static func setStoreOnWrite(_ value: Bool){
         LogLensConfig.storeCopyOnWrite = value

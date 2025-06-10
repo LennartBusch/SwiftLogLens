@@ -9,8 +9,7 @@ public struct LogLens: Sendable{
     public let osLogger: Logger
     let category: any LogCategory
     
-    @MainActor static var logs: [CustomLog] = []
-    
+    public static let store = LogStore.shared
     
     public init(category: any LogCategory){
         osLogger = Logger(subsystem: LogLensConfig.defaultSubSystem, category: category.rawValue)
@@ -25,15 +24,15 @@ public struct LogLens: Sendable{
     ///   LogLens log function has no option for privacy redaction. All arguments will printed to the logstore in plaintext
     public func log(level: OSLogType = .default, _ message: String){
         osLogger.log(level: level, "\(message)")
-        let date = Date()
         if LogLensConfig.storeCopyOnWrite{
-            DispatchQueue.main.async {[category] in
-                LogLens.logs.append((date, category, level, message))
+            let date = Date()
+            Task{
+                await LogLens.store.addLog((date, category, level, message))
             }
         }
     }
     
-    public static func loadLogs(
+    static func loadLogs(
         _ category: (any LogCategory)? = nil,
         since fetchDate: Date = Date().addingTimeInterval(-1 * 60 * 60 * 24)
     )->[OSLogEntry]{
@@ -48,9 +47,59 @@ public struct LogLens: Sendable{
         let pos = store.position(date: fetchDate)
         let osLogs = (try? store.getEntries(at: pos, matching: predicate).compactMap({$0})) ?? []
         return osLogs
+        
     }
     
 }
 
 
+
+public actor LogStore{
+    
+    private init(){}
+    static let shared = LogStore()
+    
+    var logs : [CustomLog] = []
+    
+    @MainActor
+    public static var logURL: URL?  = {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appending(path: "logs.csv")
+    }()
+    
+    var logURL: URL?  = {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appending(path: "logs.csv")
+    }()
+    
+    
+    func addLog(_ log: CustomLog){
+        logs.append(log)
+    }
+    
+    public func save(){
+        guard
+            let fileURL = logURL,
+            LogLensConfig.storeCopyOnWrite
+        else { return }
+        
+        let attributes = try? FileManager.default.attributesOfItem(atPath: fileURL.path())
+        let fileSize = attributes?[FileAttributeKey.size] as? Int ?? 0
+        var string = ""
+        for log in logs{
+            string += "\(log.timestamp.logFormat());\(log.category.rawValue.uppercased());\(log.type.levelDescription);\(log.message)\n"
+        }
+        if fileSize > 1024 * 5 || fileSize == 0{
+            string = "date;subsystem;type;message\n" + string
+            try? FileManager.default.removeItem(at: fileURL)
+        }
+        try? string.appendToURL(fileURL: fileURL)
+    }
+}
+
+
+struct Custom{
+    var timestamp: Date
+    var category: any LogCategory
+    var type: OSLogType
+    var message: String
+}
 

@@ -9,5 +9,5 @@ import Foundation
 
 
 /// The protocol for log categories 
-public protocol LogCategory: Identifiable, CaseIterable, RawRepresentable<String>, Hashable, Sendable {}
+public protocol LogCategory: Identifiable, CaseIterable, RawRepresentable<String>, Hashable, Sendable, Codable {}
 

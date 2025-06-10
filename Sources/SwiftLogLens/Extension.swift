@@ -60,7 +60,22 @@ extension OSLogEntry{
     
     public var levelDescription: String{
         guard let log = self as? OSLogEntryLog else {return ""}
-        return log.levelDescription
+        return switch log.level{
+        case .undefined:
+            "undefined"
+        case .debug:
+            "debug"
+        case .info:
+            "info"
+        case .notice:
+            "notice"
+        case .error:
+            "error"
+        case .fault:
+            "fault"
+        @unknown default:
+            "unknown"
+        }
     }
     
     func toCustomLog(type: any LogCategory.Type)->CustomLog?{
@@ -71,9 +86,6 @@ extension OSLogEntry{
     }
 }
 
-
-
-
 extension OSLogType{
     
     var color: Color{
@@ -83,7 +95,51 @@ extension OSLogType{
         case .error, .fault : return .red
         case .info : return .clear
         default:
-                return .clear
+            return .clear
+        }
+    }
+    
+    var levelDescription: String{
+        return switch self{
+        case .debug:
+            "debug"
+        case .info:
+            "info"
+        case .info:
+            "info"
+        case .error:
+            "error"
+        case .fault:
+            "fault"
+        default:
+            "default"
         }
     }
 }
+
+
+extension String {
+    func appendLineToURL(fileURL: URL) throws {
+         try (self + "\n").appendToURL(fileURL: fileURL)
+     }
+     
+     func appendToURL(fileURL: URL) throws {
+         let data = self.data(using: String.Encoding.utf8)!
+         try data.append(fileURL: fileURL)
+     }
+ }
+
+ extension Data {
+     func append(fileURL: URL) throws {
+         if let fileHandle = FileHandle(forWritingAtPath: fileURL.path) {
+             defer {
+                 fileHandle.closeFile()
+             }
+             fileHandle.seekToEndOfFile()
+             fileHandle.write(self)
+         }
+         else {
+             try write(to: fileURL, options: .atomic)
+         }
+     }
+ }

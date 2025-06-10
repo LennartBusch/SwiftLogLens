@@ -18,22 +18,24 @@ public struct LogLensView<Category: LogCategory>: View {
     
     public init (categoryType: Category.Type) {
         self.categoryType = categoryType
-
     }
     
     public var body: some View {
         List{
-            ForEach(filter(by: category).reversed(), id: \.timestamp){log in
+            ForEach(filter(by: category, logs: viewModel.customLogs).reversed(), id: \.timestamp){log in
                 NavigationLink(destination: {
                     ScrollView{
                         logBody(log: log, preview: false)
                             .padding(.horizontal)
+                        
                     }
                 }, label: {
                     logBody(log: log, preview: true)
                 })
             }
         }
+        .refreshable(action: refresh)
+        .onAppear(perform: refresh)
         .toolbar{
             ToolbarItemGroup(placement: .primaryAction, content: {
                 HStack{
@@ -57,19 +59,22 @@ public struct LogLensView<Category: LogCategory>: View {
 #if os(iOS)
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 #endif
-                                viewModel.loadLogs()
+                                viewModel.loadLogs(for: category, as: categoryType)
                             }, label: {
                                 Image(systemName: "arrow.counterclockwise")
                             })
                         }else{
                             ProgressView()
                         }
-                        
+                    }else{                        
+                        if let url = LogStore.logURL{
+                            ShareLink(item: url)
+                        }
                     }
-
                 }
-                
+
             })
+            
         }
         
     }
@@ -91,18 +96,33 @@ public struct LogLensView<Category: LogCategory>: View {
         .font(.footnote)
     }
     
-    func filter(by category: Category?)->[CustomLog]{
-        guard let category else{
-            return LogLensConfig.storeCopyOnWrite ? viewModel.customLogs : viewModel.logs.compactMap{$0.toCustomLog(type: categoryType)}
-        }
-        if LogLensConfig.storeCopyOnWrite{
-            return viewModel.customLogs.filter{$0.category.rawValue == category.rawValue}
-        }else{
-            return viewModel.logs.filter{($0 as? OSLogEntryLog)?.category == category.rawValue}.compactMap{$0.toCustomLog(type: categoryType)}
-        }
+    func filter(by category: Category?, logs: [CustomLog])->[CustomLog]{
+        guard let category else{ return logs}
+        return viewModel.customLogs.filter{$0.category.rawValue == category.rawValue}
+
     }
     
+    
+    func refresh(){
+        Task{
+            await viewModel.reloadLocalLogs()
+        }
+    }
     
 }
 
 
+#Preview {
+    if #available(iOS 16.0, *) {
+        NavigationStack{
+            LogLensView(categoryType: X.self)
+//            if let url = LogStore.logURL{
+//                ShareLink(item: url)
+//            }
+        }
+    }
+}
+enum X : String, LogCategory{
+    var id: Self { self }
+    case loglens
+}
