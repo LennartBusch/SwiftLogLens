@@ -24,7 +24,11 @@ public actor LogLensConfig {
     /// The defaults subsystem loglens writes to
     public static var defaultSubSystem: String = Bundle.main.bundleIdentifier ?? "LogLens"
     
-    public static func setStoreOnWrite(_ value: Bool){
+    public static func setWriteToDisk(_ value: Bool){
+        LogLensConfig.writeToDisk = value
+    }
+    
+    public static func setStoreCopy(_ value: Bool){
         LogLensConfig.storeCopyOnWrite = value
     }
     
