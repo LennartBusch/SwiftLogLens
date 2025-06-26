@@ -24,10 +24,15 @@ public struct LogLens: Sendable{
     ///   LogLens log function has no option for privacy redaction. All arguments will printed to the logstore in plaintext
     public func log(level: OSLogType = .default, _ message: String){
         osLogger.log(level: level, "\(message)")
+        let date = Date()
         if LogLensConfig.storeCopyOnWrite{
-            let date = Date()
             Task{
                 await LogLens.store.addLog((date, category, level, message))
+            }
+        }
+        if LogLensConfig.writeToDisk{
+            Task{
+                await LogLens.store.writeLog((date, category, level, message))
             }
         }
     }
@@ -56,7 +61,12 @@ public struct LogLens: Sendable{
 
 public actor LogStore{
     
-    private init(){}
+    private init(){
+        if let path = logURL , !FileManager.default.fileExists(atPath: path.path()){
+            let string = "date;subsystem;type;message\n"
+            try?  string.appendToURL(fileURL: path)
+        }
+    }
     static let shared = LogStore()
     
     var logs : [CustomLog] = []
@@ -75,23 +85,51 @@ public actor LogStore{
         logs.append(log)
     }
     
-    public func save(){
+    func writeLog(_ log: CustomLog){
+        if let logURL{
+            try? "\(log.timestamp.logFormat());\(log.category.rawValue.uppercased());\(log.type.levelDescription);\(log.message)\n".appendToURL(fileURL: logURL)
+        }
+    }
+        
+    /// Removes all persisted log entries that are older than the given number of days.
+    /// - Parameter days: The amount of history (in days) to keep.
+    public func pruneLogs(olderThanDays days: Int) {
+        guard days > 0 else { return }
+        
+        // Calculate the cut‑off date.
+        let thresholdDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+        
         guard
             let fileURL = logURL,
-            LogLensConfig.storeCopyOnWrite
+            FileManager.default.fileExists(atPath: fileURL.path())
         else { return }
         
-        let attributes = try? FileManager.default.attributesOfItem(atPath: fileURL.path())
-        let fileSize = attributes?[FileAttributeKey.size] as? Int ?? 0
-        var string = ""
-        for log in logs{
-            string += "\(log.timestamp.logFormat());\(log.category.rawValue.uppercased());\(log.type.levelDescription);\(log.message)\n"
+        guard
+            let data = try? Data(contentsOf: fileURL),
+            let csv = String(data: data, encoding: .utf8)
+        else { return }
+        
+        // Split into header + body lines.
+        var lines = csv.components(separatedBy: .newlines)
+        guard !lines.isEmpty else { return }
+        let header = lines.removeFirst()
+        
+        let formatter = DateFormatter()
+        formatter.timeZone = .current
+        formatter.dateFormat = "y-MM-dd, HH:mm:ss.SSSS"
+        
+        // Keep only lines whose timestamp is **after** the threshold.
+        let kept = lines.filter { line in
+            guard !line.isEmpty else { return false }        // skip blank lines
+            let dateString = line.prefix { $0 != ";" }       // substring before the first ';'
+            guard let date = formatter.date(from: String(dateString)) else {
+                return true                                  // keep line if we can't parse date
+            }
+            return date >= thresholdDate
         }
-        if fileSize > 1024 * 5 || fileSize == 0{
-            string = "date;subsystem;type;message\n" + string
-            try? FileManager.default.removeItem(at: fileURL)
-        }
-        try? string.appendToURL(fileURL: fileURL)
+        
+        let newContent = ([header] + kept).joined(separator: "\n") + "\n"
+        try? newContent.write(to: fileURL, atomically: true, encoding: .utf8)
     }
 }
 
@@ -102,4 +140,3 @@ struct Custom{
     var type: OSLogType
     var message: String
 }
-
