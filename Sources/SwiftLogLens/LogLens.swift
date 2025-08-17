@@ -22,8 +22,8 @@ public struct LogLens: Sendable{
     ///   - message: The mesage
     ///
     ///   LogLens log function has no option for privacy redaction. All arguments will printed to the logstore in plaintext
-    public func log(level: OSLogType = .default, _ message: String){
-        osLogger.log(level: level, "\(message)")
+    public func log(level: OSLogType = .default, _ message: String, _ privacy: OSLogPrivacy = .public){
+        osLogger.log(level: level, "\(message, privacy: .public)")
         let date = Date()
         if LogLensConfig.storeCopyOnWrite{
             Task{
@@ -116,7 +116,7 @@ public actor LogStore{
         
         let formatter = DateFormatter()
         formatter.timeZone = .current
-        formatter.dateFormat = "y-MM-dd, HH:mm:ss.SSSS"
+        formatter.dateFormat = "y-MM-dd HH:mm:ss.SSSS"
         
         // Keep only lines whose timestamp is **after** the threshold.
         let kept = lines.filter { line in

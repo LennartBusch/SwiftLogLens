@@ -12,7 +12,7 @@ import SwiftUI
 extension Date{
     func logFormat()->String{
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yy/MM/dd, HH:mm:ss.SSSS"
+        dateFormatter.dateFormat = "yy/MM/dd HH:mm:ss.SSSS"
         return dateFormatter.string(from: self)
     }
 }
