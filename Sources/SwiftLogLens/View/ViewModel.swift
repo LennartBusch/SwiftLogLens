@@ -27,7 +27,7 @@ extension LogLensView{
             let pastDay: Double = -1 * 60 * 60 * 24
             fetching = true
             DispatchQueue.global(qos: .utility).async {
-                guard let store = try? OSLogStore(scope: LogLensConfig.storeScope) else {return}
+                guard let store = try? OSLogStore(scope: .currentProcessIdentifier) else {return}
                 var predicate: NSPredicate
                 if let category{
                     predicate = NSPredicate(format: "(subsystem == %@) && (category IN %@)", LogLensConfig.defaultSubSystem, [category.rawValue])

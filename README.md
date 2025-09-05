@@ -2,7 +2,7 @@
 
 SwiftUILogLens is a warpper around Swifts unified logging system. SwiftUILogLens allows the fetching and displaying of logs from the log store during runtime on device. 
 
-The package is named SwifLogLens for better distinction from other packages. However, the packages uses in most cases the abbreviated version LogLens. 
+The package is named SwiftLogLens for better distinction from other packages. However, the packages uses in most cases the abbreviated version LogLens. 
 
 ## Getting started
 To use LogLens you need to create an enum that conforms to the protocol LogCategory. 
