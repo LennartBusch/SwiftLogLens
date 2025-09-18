@@ -9,7 +9,6 @@ import Foundation
 import SwiftUI
 import OSLog
 
-
 public struct LogLensView<Category: LogCategory>: View {
     private let categoryType: Category.Type
     @StateObject var viewModel = ViewModel()
@@ -53,6 +52,11 @@ public struct LogLensView<Category: LogCategory>: View {
                     .tint(.gray)
                     .font(.headline)
                     .foregroundStyle(Color.black)
+                    #if os(iOS)
+                    .pickerStyle(.automatic)
+                    #else
+                    .pickerStyle(.navigationLink)
+                    #endif
                     if !LogLensConfig.storeCopyOnWrite{
                         if !viewModel.fetching{
                             Button(action: {
@@ -113,7 +117,7 @@ public struct LogLensView<Category: LogCategory>: View {
 
 
 #Preview {
-    if #available(iOS 16.0, *) {
+    if #available(iOS 17.0, *) {
         NavigationStack{
             LogLensView(categoryType: X.self)
 //            if let url = LogStore.logURL{
