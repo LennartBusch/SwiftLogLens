@@ -20,11 +20,17 @@ public actor LogStore{
     
     @MainActor
     public static var logURL: URL?  = {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appending(path: "logLenslogs.csv")
+        if let appgroup = LogLensConfig.appGroup {
+            return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appgroup)?.appending(path: "logLenslogs.csv")
+        }
+        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appending(path: "logLenslogs.csv")
     }()
     
     var logURL: URL?  = {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appending(path: "logLenslogs.csv")
+        if let appgroup = LogLensConfig.appGroup {
+            return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appgroup)?.appending(path: "logLenslogs.csv")
+        }
+        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appending(path: "logLenslogs.csv")
     }()
     
     

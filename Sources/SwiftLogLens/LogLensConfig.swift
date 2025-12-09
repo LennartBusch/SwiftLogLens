@@ -32,6 +32,11 @@ public actor LogLensConfig {
         return UserDefaults(suiteName: "loglens")?.string(forKey: "subsystem") ?? (Bundle.main.bundleIdentifier ?? "LogLens")
     }
     
+    /// The defaults subsystem loglens writes to
+    static var appGroup: String?{
+        return UserDefaults(suiteName: "loglens")?.string(forKey: "appGroup")
+    }
+    
     public static func setWriteToDisk(_ value: Bool){
         UserDefaults(suiteName: "loglens")?.set(value, forKey: "writeToDisk")
     }
@@ -44,5 +49,8 @@ public actor LogLensConfig {
         UserDefaults(suiteName: "loglens")?.set(subsystem, forKey: "subsystem")
     }
  
+    public static func setAppGroup(_ appGroup: String){
+        UserDefaults(suiteName: "loglens")?.set(appGroup, forKey: "appGroup")
+    }
     
 }
