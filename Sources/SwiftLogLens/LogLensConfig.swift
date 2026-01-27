@@ -37,11 +37,11 @@ public actor LogLensConfig {
         return UserDefaults(suiteName: "loglens")?.string(forKey: "appGroup")
     }
     
-    public static func setWriteToDisk(_ value: Bool){
+    public static func storeOnDisk(_ value: Bool){
         UserDefaults(suiteName: "loglens")?.set(value, forKey: "writeToDisk")
     }
     
-    public static func setStoreCopy(_ value: Bool){
+    public static func storeInMemory(_ value: Bool){
         UserDefaults(suiteName: "loglens")?.set(value, forKey: "storeCopy")
     }
     

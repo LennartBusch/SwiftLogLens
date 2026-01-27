@@ -1,5 +1,5 @@
 import Foundation
-import OSLog
+@_exported import OSLog
 import SwiftUI
 
 typealias CustomLog = (timestamp: Date,category: any LogCategory,type: OSLogType,message: String)

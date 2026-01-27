@@ -46,6 +46,7 @@ extension LogLensView{
         }
         
         func reloadLocalLogs()async{
+            guard LogLensConfig.storeCopyOnWrite else {return}
             customLogs = await LogLens.store.logs
         }
     }
