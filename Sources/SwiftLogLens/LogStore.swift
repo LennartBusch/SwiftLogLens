@@ -34,13 +34,17 @@ public actor LogStore{
     }()
     
     
+    func clearLogs(){
+        logs.removeAll()
+    }
+    
     func addLog(_ log: CustomLog){
         logs.append(log)
     }
     
     func writeLog(_ log: CustomLog){
         if let logURL{
-            try? "\(log.timestamp.logFormat());\(log.category.rawValue.uppercased());\(log.type.levelDescription);\(log.message)\n".appendToURL(fileURL: logURL)
+            try? "\(log.timestamp.logFormat());\(log.category?.rawValue.uppercased() ?? "");\(log.type.levelDescription);\(log.message)\n".appendToURL(fileURL: logURL)
         }
     }
         

@@ -2,17 +2,17 @@ import Foundation
 @_exported import OSLog
 import SwiftUI
 
-typealias CustomLog = (timestamp: Date,category: any LogCategory,type: OSLogType,message: String)
+typealias CustomLog = (timestamp: Date,category: (any LogCategory)?,type: OSLogType,message: String)
 
 public struct LogLens: Sendable{
     
     public let osLogger: Logger
-    let category: any LogCategory
+    let category: (any LogCategory)?
     
     public static let store = LogStore.shared
     
-    public init(category: any LogCategory){
-        osLogger = Logger(subsystem: LogLensConfig.defaultSubSystem, category: category.rawValue)
+    public init(category: (any LogCategory)?){
+        osLogger = Logger(subsystem: LogLensConfig.defaultSubSystem, category: category?.rawValue ?? "")
         self.category = category
     }
     

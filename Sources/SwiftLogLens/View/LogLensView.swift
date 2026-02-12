@@ -70,10 +70,15 @@ public struct LogLensView<Category: LogCategory>: View {
                         }else{
                             ProgressView()
                         }
-                    }else{                        
-                        if let url = LogStore.logURL{
-                            ShareLink(item: url)
-                        }
+                    }else{
+                        Button(action: {
+                            Task{
+                                await LogStore.shared.clearLogs()
+                                await viewModel.reloadLocalLogs()
+                            }
+                        }, label: {
+                            Image(systemName: "trash.fill")
+                        })
                     }
                 }
 
@@ -90,7 +95,9 @@ public struct LogLensView<Category: LogCategory>: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(Color.red)
                 }
-                Text(log.category.rawValue.capitalized)
+                if let category = log.category{
+                    Text(category.rawValue.capitalized)
+                }
             }
             Text(log.timestamp.logFormat())
             Divider()
@@ -102,7 +109,7 @@ public struct LogLensView<Category: LogCategory>: View {
     
     func filter(by category: Category?, logs: [CustomLog])->[CustomLog]{
         guard let category else{ return logs}
-        return viewModel.customLogs.filter{$0.category.rawValue == category.rawValue}
+        return viewModel.customLogs.filter{$0.category?.rawValue == category.rawValue}
 
     }
     
