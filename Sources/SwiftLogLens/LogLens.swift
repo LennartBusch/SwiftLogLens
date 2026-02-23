@@ -100,6 +100,10 @@ public struct LogLens: Sendable{
         }
     }
     
+    public static var shouldPersistLogs: Bool {
+        LogLensConfig.storeCopyOnWrite || LogLensConfig.writeToDisk
+    }
+    
     static func loadLogs(
         _ category: (any LogCategory)? = nil,
         since fetchDate: Date = Date().addingTimeInterval(-1 * 60 * 60 * 24)

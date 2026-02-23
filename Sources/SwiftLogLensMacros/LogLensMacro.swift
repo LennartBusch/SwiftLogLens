@@ -50,6 +50,12 @@ public struct LogLensMacro: ExpressionMacro {
                 continue
             }
             
+            if argumentList.count >= 2 {
+                let secondArgumentIndex = argumentList.index(after: argumentList.startIndex)
+                let secondArgument = argumentList[secondArgumentIndex]
+                return "(\(secondArgument.expression.trimmedDescription)).rawValue"
+            }
+            
             return "(\(firstArgument.expression.trimmedDescription)).rawValue"
         }
         
@@ -102,6 +108,58 @@ public struct LogLensMacro: ExpressionMacro {
             }
         }
         return nil
+    }
+    
+    private static func hasPrivacyArgument(_ expressions: LabeledExprListSyntax) -> Bool {
+        expressions.contains { labeledExpression in
+            labeledExpression.label?.text == "privacy"
+        }
+    }
+    
+    private static func loggerMessageSource(
+        from messageExpression: ExprSyntax,
+        privacySource: String,
+        fallbackMessageExpression: String
+    ) -> String {
+        guard let stringLiteral = messageExpression.as(StringLiteralExprSyntax.self) else {
+            return "\"\\((\(fallbackMessageExpression)), privacy: \(privacySource))\""
+        }
+        
+        var source = ""
+        source += stringLiteral.openingPounds?.text ?? ""
+        source += stringLiteral.openingQuote.text
+        
+        for segment in stringLiteral.segments {
+            if let stringSegment = segment.as(StringSegmentSyntax.self) {
+                source += stringSegment.content.text
+                continue
+            }
+            
+            guard let expressionSegment = segment.as(ExpressionSegmentSyntax.self) else {
+                source += segment.description
+                continue
+            }
+            
+            let expressionsSource = expressionSegment.expressions.trimmedDescription
+            let sourceWithPrivacy: String
+            if hasPrivacyArgument(expressionSegment.expressions) {
+                sourceWithPrivacy = expressionsSource
+            } else if expressionsSource.isEmpty {
+                sourceWithPrivacy = "privacy: \(privacySource)"
+            } else {
+                sourceWithPrivacy = "\(expressionsSource), privacy: \(privacySource)"
+            }
+            
+            source += expressionSegment.backslash.text
+            source += expressionSegment.pounds?.text ?? ""
+            source += expressionSegment.leftParen.text
+            source += sourceWithPrivacy
+            source += expressionSegment.rightParen.text
+        }
+        
+        source += stringLiteral.closingQuote.text
+        source += stringLiteral.closingPounds?.text ?? ""
+        return source
     }
     
     public static func expansion(
@@ -159,21 +217,39 @@ public struct LogLensMacro: ExpressionMacro {
         let levelSource = levelExpression.trimmedDescription
         let messageSource = messageExpression.trimmedDescription
         let privacySource = privacyExpression?.trimmedDescription ?? ".public"
-        
+        let loggerMessageForPersistPath = loggerMessageSource(
+            from: messageExpression,
+            privacySource: privacySource,
+            fallbackMessageExpression: "__loglensMessage"
+        )
+        let loggerMessageForDirectPath = messageExpression.as(StringLiteralExprSyntax.self) == nil
+            ? loggerMessageSource(
+                from: messageExpression,
+                privacySource: privacySource,
+                fallbackMessageExpression: messageSource
+            )
+            : loggerMessageForPersistPath
         let expansion = """
         ({
             let __loglensCategory: String = \(categorySource)
             let __loglensLevel: OSLogType = \(levelSource)
-            let __loglensMessage: String = \(messageSource)
             let __loglensLogger = LogLens.logger(forCategory: __loglensCategory)
-            #sourceLocation(file: \(callSiteFile), line: \(callSiteLine))
-            __loglensLogger.log(level: __loglensLevel, "\\(__loglensMessage, privacy: \(privacySource))")
-            #sourceLocation()
-            LogLens.persistIfConfigured(
-                category: __loglensCategory,
-                level: __loglensLevel,
-                message: __loglensMessage
-            )
+            let __loglensShouldPersist = LogLens.shouldPersistLogs
+            if __loglensShouldPersist {
+                let __loglensMessage: String = \(messageSource)
+                #sourceLocation(file: \(callSiteFile), line: \(callSiteLine))
+                __loglensLogger.log(level: __loglensLevel, \(loggerMessageForPersistPath))
+                #sourceLocation()
+                LogLens.persistIfConfigured(
+                    category: __loglensCategory,
+                    level: __loglensLevel,
+                    message: __loglensMessage
+                )
+            } else {
+                #sourceLocation(file: \(callSiteFile), line: \(callSiteLine))
+                __loglensLogger.log(level: __loglensLevel, \(loggerMessageForDirectPath))
+                #sourceLocation()
+            }
         }())
         """
         
