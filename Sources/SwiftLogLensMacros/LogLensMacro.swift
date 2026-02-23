@@ -10,6 +10,24 @@ enum LogLensMacroError: Error, CustomStringConvertible {
 }
 
 public struct LogLensMacro: ExpressionMacro {
+    private static func contextTypeCategory(from lexicalContext: [Syntax]) -> String? {
+        for node in lexicalContext {
+            if let classDecl = node.as(ClassDeclSyntax.self) {
+                return classDecl.name.text
+            }
+            if let actorDecl = node.as(ActorDeclSyntax.self) {
+                return actorDecl.name.text
+            }
+            if let structDecl = node.as(StructDeclSyntax.self) {
+                return structDecl.name.text
+            }
+            if let enumDecl = node.as(EnumDeclSyntax.self) {
+                return enumDecl.name.text
+            }
+        }
+        return nil
+    }
+    
     public static func expansion(
         of node: some FreestandingMacroExpansionSyntax,
         in context: some MacroExpansionContext
@@ -55,9 +73,12 @@ public struct LogLensMacro: ExpressionMacro {
         )
         let callSiteFile = callSiteLocation?.file.trimmedDescription ?? "#filePath"
         let callSiteLine = callSiteLocation?.line.trimmedDescription ?? "#line"
+        let typeCategorySource = contextTypeCategory(from: context.lexicalContext)
+            .map { "\"\($0)\"" }
+            ?? "LogLens.defaultCategory(fromFilePath: \(callSiteFile))"
         
         let categorySource = categoryExpression?.trimmedDescription
-            ?? "LogLens.defaultCategory(fromFilePath: \(callSiteFile))"
+            ?? typeCategorySource
         let levelSource = levelExpression.trimmedDescription
         let messageSource = messageExpression.trimmedDescription
         let privacySource = privacyExpression?.trimmedDescription ?? ".public"
