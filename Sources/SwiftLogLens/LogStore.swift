@@ -135,6 +135,12 @@ public actor LogStore{
             return date >= thresholdDate
         }
         
+        if persistentFileURL == fileURL {
+            persistentFileHandle?.closeFile()
+            persistentFileHandle = nil
+            persistentFileURL = nil
+        }
+        
         let newContent = ([header] + kept).joined(separator: "\n") + "\n"
         try? newContent.write(to: fileURL, atomically: true, encoding: .utf8)
     }

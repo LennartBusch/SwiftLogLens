@@ -86,17 +86,8 @@ public struct LogLens: Sendable{
         }
         
         let log: CustomLog = (timestamp: Date(), category: category, type: level, message: message)
-        
-        if storeInMemory {
-            Task {
-                await LogLens.store.addLog(log)
-            }
-        }
-        
-        if writeToDisk {
-            Task {
-                await LogLens.store.writeLog(log)
-            }
+        Task {
+            await LogLens.store.append(log, storeInMemory: storeInMemory, writeToDisk: writeToDisk)
         }
     }
     
