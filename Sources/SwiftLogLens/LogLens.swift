@@ -17,6 +17,7 @@ public struct LogLens: Sendable{
     public static let store = LogStore.shared
     private static let loggerCacheLock = NSLock()
     private nonisolated(unsafe) static var loggerCache: [LoggerKey: Logger] = [:]
+    private nonisolated(unsafe) static var cachedSubsystem: String = LogLensConfig.defaultSubSystem
     
     public init(category: (any LogCategory)?){
         let categoryName = category?.rawValue ?? ""
@@ -44,10 +45,11 @@ public struct LogLens: Sendable{
     
     public static func logger(forCategory category: String) -> Logger {
         let normalizedCategory = category.isEmpty ? "LogLens" : category
-        let key = LoggerKey(subsystem: LogLensConfig.defaultSubSystem, category: normalizedCategory)
         
         loggerCacheLock.lock()
         defer { loggerCacheLock.unlock() }
+        
+        let key = LoggerKey(subsystem: cachedSubsystem, category: normalizedCategory)
         
         if let cached = loggerCache[key] {
             return cached
@@ -56,6 +58,13 @@ public struct LogLens: Sendable{
         let logger = Logger(subsystem: key.subsystem, category: key.category)
         loggerCache[key] = logger
         return logger
+    }
+    
+    public static func updateSubsystem(_ subsystem: String) {
+        loggerCacheLock.lock()
+        cachedSubsystem = subsystem
+        loggerCache.removeAll(keepingCapacity: true)
+        loggerCacheLock.unlock()
     }
     
     public static func defaultCategory(from fileID: StaticString) -> String {

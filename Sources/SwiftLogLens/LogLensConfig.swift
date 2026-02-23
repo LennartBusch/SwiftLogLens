@@ -78,6 +78,7 @@ public actor LogLensConfig {
         cachedDefaultSubsystem = subsystem
         lock.unlock()
         UserDefaults(suiteName: "loglens")?.set(subsystem, forKey: Key.subsystem)
+        LogLens.updateSubsystem(subsystem)
     }
  
     public static func setAppGroup(_ appGroup: String){
