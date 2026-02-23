@@ -9,7 +9,7 @@ private struct LoggerKey: Hashable {
 }
 
 public protocol LogLensCategoryProviding {
-    static var __loglensDeclaredCategory: String { get }
+    nonisolated static var __loglensDeclaredCategory: String { get }
 }
 
 public struct LogLens: Sendable{
