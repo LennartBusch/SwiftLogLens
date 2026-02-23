@@ -28,7 +28,7 @@ public struct LogLensCategoryMacro: MemberMacro, ExtensionMacro {
         
         let categoryExpressionSource = firstArgument.expression.trimmedDescription
         let member = """
-        static var __loglensDeclaredCategory: String {
+        public static var __loglensDeclaredCategory: String {
             (\(categoryExpressionSource)).rawValue
         }
         """
