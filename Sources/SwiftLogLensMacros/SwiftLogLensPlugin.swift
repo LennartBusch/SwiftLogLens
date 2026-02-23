@@ -5,5 +5,6 @@ import SwiftSyntaxMacros
 struct SwiftLogLensPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
         LogLensMacro.self,
+        LogLensCategoryMacro.self,
     ]
 }

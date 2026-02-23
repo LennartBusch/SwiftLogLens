@@ -10,6 +10,79 @@ enum LogLensMacroError: Error, CustomStringConvertible {
 }
 
 public struct LogLensMacro: ExpressionMacro {
+    private static let supportedCategoryAttributeNames: Set<String> = [
+        "LoglensCategrory",
+        "LoglensCategory",
+    ]
+    
+    private static func isSupportedCategoryAttribute(_ attributeName: String) -> Bool {
+        let trimmed = attributeName
+        if supportedCategoryAttributeNames.contains(trimmed) {
+            return true
+        }
+        
+        if let baseName = trimmed.split(separator: ".").last {
+            return supportedCategoryAttributeNames.contains(String(baseName))
+        }
+        
+        return false
+    }
+    
+    private static func categoryExpression(from attributes: AttributeListSyntax?) -> String? {
+        guard let attributes else {
+            return nil
+        }
+        
+        for element in attributes {
+            guard let attribute = element.as(AttributeSyntax.self) else {
+                continue
+            }
+            
+            guard isSupportedCategoryAttribute(attribute.attributeName.trimmedDescription) else {
+                continue
+            }
+            
+            guard
+                let arguments = attribute.arguments,
+                case let .argumentList(argumentList) = arguments,
+                let firstArgument = argumentList.first
+            else {
+                continue
+            }
+            
+            return "(\(firstArgument.expression.trimmedDescription)).rawValue"
+        }
+        
+        return nil
+    }
+    
+    private static func contextAnnotatedCategoryExpression(from lexicalContext: [Syntax]) -> String? {
+        for node in lexicalContext {
+            if let classDecl = node.as(ClassDeclSyntax.self),
+               let categoryExpression = categoryExpression(from: classDecl.attributes) {
+                return categoryExpression
+            }
+            if let actorDecl = node.as(ActorDeclSyntax.self),
+               let categoryExpression = categoryExpression(from: actorDecl.attributes) {
+                return categoryExpression
+            }
+            if let structDecl = node.as(StructDeclSyntax.self),
+               let categoryExpression = categoryExpression(from: structDecl.attributes) {
+                return categoryExpression
+            }
+            if let enumDecl = node.as(EnumDeclSyntax.self),
+               let categoryExpression = categoryExpression(from: enumDecl.attributes) {
+                return categoryExpression
+            }
+            if let extensionDecl = node.as(ExtensionDeclSyntax.self),
+               let categoryExpression = categoryExpression(from: extensionDecl.attributes) {
+                return categoryExpression
+            }
+        }
+        
+        return nil
+    }
+    
     private static func contextTypeCategory(from lexicalContext: [Syntax]) -> String? {
         for node in lexicalContext {
             if let classDecl = node.as(ClassDeclSyntax.self) {
@@ -23,6 +96,9 @@ public struct LogLensMacro: ExpressionMacro {
             }
             if let enumDecl = node.as(EnumDeclSyntax.self) {
                 return enumDecl.name.text
+            }
+            if let extensionDecl = node.as(ExtensionDeclSyntax.self) {
+                return extensionDecl.extendedType.trimmedDescription
             }
         }
         return nil
@@ -73,12 +149,13 @@ public struct LogLensMacro: ExpressionMacro {
         )
         let callSiteFile = callSiteLocation?.file.trimmedDescription ?? "#filePath"
         let callSiteLine = callSiteLocation?.line.trimmedDescription ?? "#line"
-        let typeCategorySource = contextTypeCategory(from: context.lexicalContext)
+        let contextualCategorySource = contextAnnotatedCategoryExpression(from: context.lexicalContext)
+            ?? contextTypeCategory(from: context.lexicalContext)
             .map { "\"\($0)\"" }
             ?? "LogLens.defaultCategory(fromFilePath: \(callSiteFile))"
         
         let categorySource = categoryExpression?.trimmedDescription
-            ?? typeCategorySource
+            ?? contextualCategorySource
         let levelSource = levelExpression.trimmedDescription
         let messageSource = messageExpression.trimmedDescription
         let privacySource = privacyExpression?.trimmedDescription ?? ".public"

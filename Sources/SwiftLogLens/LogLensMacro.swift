@@ -23,3 +23,15 @@ public macro loglens(category: String, _ level: OSLogType, _ message: String, pr
     module: "SwiftLogLensMacros",
     type: "LogLensMacro"
 )
+
+@attached(member, names: named(__loglensDeclaredCategory))
+public macro LoglensCategrory(_ category: any LogCategory) = #externalMacro(
+    module: "SwiftLogLensMacros",
+    type: "LogLensCategoryMacro"
+)
+
+@attached(member, names: named(__loglensDeclaredCategory))
+public macro LoglensCategory(_ category: any LogCategory) = #externalMacro(
+    module: "SwiftLogLensMacros",
+    type: "LogLensCategoryMacro"
+)
