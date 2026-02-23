@@ -7,35 +7,49 @@
 import Foundation
 
 public actor LogStore{
+    private static let currentTimestampFormat = "yy/MM/dd HH:mm:ss.SSSS"
+    private static let legacyTimestampFormat = "y-MM-dd HH:mm:ss.SSSS"
     
-    private init(){
-        if let path = logURL , !FileManager.default.fileExists(atPath: path.path()){
-            let string = "date;subsystem;type;message\n"
-            try?  string.appendToURL(fileURL: path)
-        }
+    private init(){}
+    
+    deinit {
+        persistentFileHandle?.closeFile()
     }
+    
     static let shared = LogStore()
     
     var logs : [CustomLog] = []
+    private var persistentFileHandle: FileHandle?
+    private var persistentFileURL: URL?
     
     @MainActor
-    public static var logURL: URL?  = {
+    public static var logURL: URL? {
         if let appgroup = LogLensConfig.appGroup {
             return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appgroup)?.appending(path: "logLenslogs.csv")
         }
         return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appending(path: "logLenslogs.csv")
-    }()
+    }
     
-    var logURL: URL?  = {
+    var logURL: URL? {
         if let appgroup = LogLensConfig.appGroup {
             return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appgroup)?.appending(path: "logLenslogs.csv")
         }
         return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appending(path: "logLenslogs.csv")
-    }()
+    }
     
     
     func clearLogs(){
         logs.removeAll()
+    }
+    
+    func append(_ log: CustomLog, storeInMemory: Bool, writeToDisk: Bool) {
+        if storeInMemory {
+            addLog(log)
+        }
+        
+        if writeToDisk {
+            writeLog(log)
+        }
     }
     
     func addLog(_ log: CustomLog){
@@ -43,9 +57,47 @@ public actor LogStore{
     }
     
     func writeLog(_ log: CustomLog){
-        if let logURL{
-            try? "\(log.timestamp.logFormat());\(log.category?.rawValue.uppercased() ?? "");\(log.type.levelDescription);\(log.message)\n".appendToURL(fileURL: logURL)
+        guard let logURL else {
+            return
         }
+        
+        guard let fileHandle = fileHandle(for: logURL) else {
+            return
+        }
+        
+        let line = "\(log.timestamp.logFormat());\(log.category.uppercased());\(log.type.levelDescription);\(log.message)\n"
+        if let data = line.data(using: .utf8) {
+            fileHandle.write(data)
+        }
+    }
+    
+    private func ensureLogFileExists(at path: URL) {
+        if !FileManager.default.fileExists(atPath: path.path()) {
+            let header = "date;category;type;message\n"
+            try? header.appendToURL(fileURL: path)
+        }
+    }
+    
+    private func fileHandle(for url: URL) -> FileHandle? {
+        if persistentFileURL != url {
+            persistentFileHandle?.closeFile()
+            persistentFileHandle = nil
+            persistentFileURL = url
+        }
+        
+        if let persistentFileHandle {
+            return persistentFileHandle
+        }
+        
+        ensureLogFileExists(at: url)
+        
+        guard let newHandle = try? FileHandle(forWritingTo: url) else {
+            return nil
+        }
+        
+        newHandle.seekToEndOfFile()
+        persistentFileHandle = newHandle
+        return newHandle
     }
         
     /// Removes all persisted log entries that are older than the given number of days.
@@ -73,20 +125,33 @@ public actor LogStore{
         
         let formatter = DateFormatter()
         formatter.timeZone = .current
-        formatter.dateFormat = "y-MM-dd HH:mm:ss.SSSS"
+        formatter.dateFormat = Self.currentTimestampFormat
+        
+        let legacyFormatter = DateFormatter()
+        legacyFormatter.timeZone = .current
+        legacyFormatter.dateFormat = Self.legacyTimestampFormat
         
         // Keep only lines whose timestamp is **after** the threshold.
         let kept = lines.filter { line in
             guard !line.isEmpty else { return false }        // skip blank lines
             let dateString = line.prefix { $0 != ";" }       // substring before the first ';'
-            guard let date = formatter.date(from: String(dateString)) else {
+            let timestamp = String(dateString)
+            guard
+                let date = formatter.date(from: timestamp)
+                    ?? legacyFormatter.date(from: timestamp)
+            else {
                 return true                                  // keep line if we can't parse date
             }
             return date >= thresholdDate
+        }
+        
+        if persistentFileURL == fileURL {
+            persistentFileHandle?.closeFile()
+            persistentFileHandle = nil
+            persistentFileURL = nil
         }
         
         let newContent = ([header] + kept).joined(separator: "\n") + "\n"
         try? newContent.write(to: fileURL, atomically: true, encoding: .utf8)
     }
 }
-

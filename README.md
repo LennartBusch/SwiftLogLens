@@ -1,144 +1,145 @@
-
 # SwiftLogLens
 
-  
+SwiftLogLens is a wrapper around Apple Unified Logging with a macro-first API.
 
-SwiftUILogLens is a warpper around Swifts unified logging system. SwiftUILogLens allows the fetching and displaying of logs from the log store during runtime on device.
+Since `2.0`, the recommended logging entry point is `#loglens(...)`:
+- clickable call-sites in Xcode console
+- low overhead runtime path
+- optional in-memory / on-disk mirroring for later inspection
 
-  
+## Why this package exists
 
-The package is named SwiftLogLens for better distinction from other packages. However, the packages uses in most cases the abbreviated version LogLens.
+SwiftLogLens exists to make Unified Logging more practical inside apps at runtime.
 
-  
+- On iOS/watchOS, reading logs during runtime is more limited than on macOS.
+- On watchOS in particular, log retrieval can require extra setup/profiles during development.
+- App-side debugging often needs an in-app log viewer and optional persistence, not only external Console tools.
 
-## Getting started
+`#loglens(...)` keeps OS logging as the source of truth while optionally mirroring entries to memory/disk when you need reliable in-app inspection.
 
-To use LogLens you need to create an enum that conforms to the protocol LogCategory.
+## Setup
 
-  
+`LogCategory` is optional.
 
-This enum is used to differentiate between loggers for certain areas of you code. Think of Networking, LocationServics, etc.
+- If you define a `LogCategory` enum, filtering/display in `LogLensView` is easier and strongly typed.
+- If you skip it, you can still use `#loglens(...)` with string categories (or automatic default categories).
+
+### Optional typed categories (`LogCategory`)
 
 ```swift
+import SwiftLogLens
 
-import SwifLogLens
-
-  
-
-enum Log: String, LogCategory{
-
-var id: Self {self}
-
-case Network, LocationService
-
+enum Logs: String, LogCategory {
+    var id: Self { self }
+    case network
+    case ui
+    case networkUtil
 }
-
 ```
 
-  
-
-## Logging
-
-Create a logger instance by calling the initalizer
-
-  
+### Without typed categories
 
 ```swift
+import SwiftLogLens
 
-let logLens = LogLens(category: Log.Network)
-
+#loglens("Boot finished")
+#loglens(category: "network", .info, "Request started")
 ```
 
-  
+## Recommended logging (`2.0+`)
 
-The recommended way to log is using the __**osLogger**__ attribute of a LogLens instance. This allows to use all features as privacy redaction, persiting, etc.
-
-  
+### Basic
 
 ```swift
-
-let logger = LogLens(category: Log.Network).osLogger
-
-  
-
-logger.log("A message")
-
-logger.error("An error Message")
-
-logger.log("A public message from \(user, privacy: .public)")
-
+#loglens("View appeared")
+#loglens(.error, "Network request failed")
+#loglens(category: "network", .debug, "Request started")
 ```
 
-### WatchOS
-
-However, on watchOS logs are not persited into the logstore by default. This requires the installment of an [profile](https://developer.apple.com/bug-reporting/profiles-and-logs/). This profile is only valid for 3 days, before it needs to be reinstalled.
-
-To migate this problem during testing times, where this might not be feasible, LogLens supports storing logs in memory.
-
-  
+### Privacy
 
 ```swift
-
-let logger = LogLens(category: Log.Network)
-
-logger.log("A message")
-
-logger.log(level: .error, "An error message")
-
+#loglens("Fetched token \(token)", privacy: .private)
+#loglens("Auth date \(Date())", privacy: .sensitive)
 ```
 
-  
+### Default category resolution
 
-## Configuration
-
-LogLens allows customization of the default settings
+If `category:` is not passed, LogLens resolves category in this order:
+1. `@LoglensCategrory(...)` / `@LoglensCategory(...)` on enclosing type
+2. Enclosing type name (`class` / `struct` / `actor` / `enum`)
+3. File name (without `.swift`)
 
 ```swift
-
-// Changes the identifier of the subsystem LogLens writes to. Defaults to the Bundle identifier
-
-LogLensConfig.setSubsystem("My Subsystem")
-
-  
-
-//Necessary on watchOS, when writing to memory. Defaults to false
-
-LogLensConfig.setStoreOnWrite(true)
-
+@LoglensCategory(Logs.networkUtil)
+final class NetworkUtil {
+    func fetch() {
+        #loglens("Request started") // category: "networkUtil"
+    }
+}
 ```
 
-  
-
-  
-
-## Viewing Logs
-
-LogLens contains a view, where logs can be fetched and displayed. This view must be inside a NavigationStack, otherwise the fetch button wont be visible.
-
-  
-
-Furthermore the view contains a picker, to filter the displayed logs. For this the LogCategory must be given.
+If you want stronger autocomplete for cases, use the typed overload:
 
 ```swift
+typealias AppLogs = Logs
 
-LogLensView(categoryType: Log.self)
-
+@LoglensCategory(AppLogs.self, .networkUtil)
+final class NetworkUtil {
+    func fetch() {
+        #loglens("Request started")
+    }
+}
 ```
 
-## Persisten Storing on Disk
+## Config
 
-With the execption of macOS, logs can't be accessed during runtime from the store. LogLens includes the option to write logs to disk in human readable format. With this logs could be for example loaded by users. 
-
-To enable persistent writing set the corresponding flag
 ```swift
-LogLensConfig.setWriteToDisk(true)
+// Unified log subsystem (defaults to bundle identifier)
+LogLensConfig.setSubsystem("com.mycompany.myapp")
+
+// Optional mirrors
+LogLensConfig.storeInMemory(true)
+LogLensConfig.storeOnDisk(true)
+
+// Optional app group for shared file location
+LogLensConfig.setAppGroup("group.com.mycompany.myapp")
 ```
 
-Logs can be retrieved from the device using the url of the written logs
+## Viewing logs in-app
+
+`LogLensView` fetches logs from `OSLogStore` and displays them.
+
 ```swift
-LogStore.logURL
+NavigationStack {
+    LogLensView(categoryType: Logs.self)
+}
 ```
-Logs can be pruned, to keep only new logs
+
+## Disk log file access
+
 ```swift
-LogStore.pruneLogs(olderThanDays: 5) //Deletes all logs older than 5 days
+// MainActor property
+let url = LogStore.logURL
 ```
+
+Prune old persisted entries:
+
+```swift
+await LogLens.store.pruneLogs(olderThanDays: 5)
+```
+
+## Legacy API (before `2.0`)
+
+Before `2.0`, logging was mainly done through `LogLens(category:)` + `osLogger` / `log(...)`.
+This is still supported for compatibility, but no longer recommended.
+
+```swift
+let lens = LogLens(category: Logs.network)
+let logger = lens.osLogger
+
+logger.log("Message")
+lens.log(level: .error, "Fallback wrapper log")
+```
+
+Use `#loglens(...)` for new code.

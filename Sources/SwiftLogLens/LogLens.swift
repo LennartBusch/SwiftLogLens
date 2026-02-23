@@ -2,18 +2,33 @@ import Foundation
 @_exported import OSLog
 import SwiftUI
 
-typealias CustomLog = (timestamp: Date,category: (any LogCategory)?,type: OSLogType,message: String)
+public typealias CustomLog = (timestamp: Date, category: String, type: OSLogType, message: String)
+
+private struct LoggerKey: Hashable {
+    let subsystem: String
+    let category: String
+}
 
 public struct LogLens: Sendable{
     
     public let osLogger: Logger
-    let category: (any LogCategory)?
+    let categoryName: String
     
     public static let store = LogStore.shared
+    private static let loggerCacheLock = NSLock()
+    private nonisolated(unsafe) static var loggerCache: [LoggerKey: Logger] = [:]
+    private nonisolated(unsafe) static var cachedSubsystem: String = LogLensConfig.defaultSubSystem
     
     public init(category: (any LogCategory)?){
-        osLogger = Logger(subsystem: LogLensConfig.defaultSubSystem, category: category?.rawValue ?? "")
-        self.category = category
+        let categoryName = category?.rawValue ?? ""
+        osLogger = LogLens.logger(forCategory: categoryName)
+        self.categoryName = categoryName
+    }
+    
+    public init(category: String?){
+        let categoryName = category ?? ""
+        osLogger = LogLens.logger(forCategory: categoryName)
+        self.categoryName = categoryName
     }
     
     /// Logs a message
@@ -23,18 +38,70 @@ public struct LogLens: Sendable{
     ///
     ///   LogLens log function has no option for privacy redaction. All arguments will printed to the logstore in plaintext
     public func log(level: OSLogType = .default, _ message: String, _ privacy: OSLogPrivacy = .public){
+        _ = privacy
         osLogger.log(level: level, "\(message, privacy: .public)")
-        let date = Date()
-        if LogLensConfig.storeCopyOnWrite{
-            Task{
-                await LogLens.store.addLog((date, category, level, message))
-            }
+        LogLens.persistIfConfigured(category: categoryName, level: level, message: message)
+    }
+    
+    public static func logger(forCategory category: String) -> Logger {
+        let normalizedCategory = category.isEmpty ? "LogLens" : category
+        
+        loggerCacheLock.lock()
+        defer { loggerCacheLock.unlock() }
+        
+        let key = LoggerKey(subsystem: cachedSubsystem, category: normalizedCategory)
+        
+        if let cached = loggerCache[key] {
+            return cached
         }
-        if LogLensConfig.writeToDisk{
-            Task{
-                await LogLens.store.writeLog((date, category, level, message))
-            }
+        
+        let logger = Logger(subsystem: key.subsystem, category: key.category)
+        loggerCache[key] = logger
+        return logger
+    }
+    
+    public static func updateSubsystem(_ subsystem: String) {
+        loggerCacheLock.lock()
+        cachedSubsystem = subsystem
+        loggerCache.removeAll(keepingCapacity: true)
+        loggerCacheLock.unlock()
+    }
+    
+    public static func defaultCategory(from fileID: StaticString) -> String {
+        let fileIDString = String(describing: fileID)
+        return defaultCategory(fromFilePath: fileIDString)
+    }
+    
+    public static func defaultCategory(fromFilePath filePath: String) -> String {
+        guard let lastPathComponent = filePath.split(separator: "/").last else {
+            return "LogLens"
         }
+        
+        let fileName = String(lastPathComponent)
+        guard let lastDot = fileName.lastIndex(of: ".") else {
+            return fileName.isEmpty ? "LogLens" : fileName
+        }
+        
+        let stem = String(fileName[..<lastDot])
+        return stem.isEmpty ? "LogLens" : stem
+    }
+    
+    public static func persistIfConfigured(category: String, level: OSLogType, message: String) {
+        let storeInMemory = LogLensConfig.storeCopyOnWrite
+        let writeToDisk = LogLensConfig.writeToDisk
+        
+        guard storeInMemory || writeToDisk else {
+            return
+        }
+        
+        let log: CustomLog = (timestamp: Date(), category: category, type: level, message: message)
+        Task {
+            await LogLens.store.append(log, storeInMemory: storeInMemory, writeToDisk: writeToDisk)
+        }
+    }
+    
+    public static var shouldPersistLogs: Bool {
+        LogLensConfig.storeCopyOnWrite || LogLensConfig.writeToDisk
     }
     
     static func loadLogs(
@@ -56,6 +123,3 @@ public struct LogLens: Sendable{
     }
     
 }
-
-
-

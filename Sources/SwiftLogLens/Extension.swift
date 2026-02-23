@@ -9,11 +9,20 @@ import Foundation
 import OSLog
 import SwiftUI
 
-extension Date{
-    func logFormat()->String{
+private enum LogLensDateFormatter {
+    static let lock = NSLock()
+    static let formatter: DateFormatter = {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yy/MM/dd HH:mm:ss.SSSS"
-        return dateFormatter.string(from: self)
+        return dateFormatter
+    }()
+}
+
+extension Date{
+    func logFormat()->String{
+        LogLensDateFormatter.lock.lock()
+        defer { LogLensDateFormatter.lock.unlock() }
+        return LogLensDateFormatter.formatter.string(from: self)
     }
 }
 
@@ -78,11 +87,8 @@ extension OSLogEntry{
         }
     }
     
-    func toCustomLog(type: any LogCategory.Type)->CustomLog?{
-        if let category = type.init(rawValue: self.categoryString){
-            return (timestamp: self.date,category: category,type: self.type, message: self.composedMessage)
-        }
-        return nil        
+    func toCustomLog(type _: any LogCategory.Type)->CustomLog?{
+        return (timestamp: self.date, category: self.categoryString, type: self.type, message: self.composedMessage)
     }
 }
 
@@ -103,8 +109,6 @@ extension OSLogType{
         return switch self{
         case .debug:
             "debug"
-        case .info:
-            "info"
         case .info:
             "info"
         case .error:
