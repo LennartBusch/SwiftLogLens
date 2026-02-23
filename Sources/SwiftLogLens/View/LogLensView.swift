@@ -111,7 +111,7 @@ public struct LogLensView<Category: LogCategory>: View {
     
     func filter(by category: Category?, logs: [CustomLog])->[CustomLog]{
         guard let category else{ return logs}
-        return viewModel.customLogs.filter { $0.category == category.rawValue }
+        return logs.filter { $0.category == category.rawValue }
 
     }
     

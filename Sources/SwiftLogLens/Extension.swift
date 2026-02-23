@@ -9,11 +9,20 @@ import Foundation
 import OSLog
 import SwiftUI
 
-extension Date{
-    func logFormat()->String{
+private enum LogLensDateFormatter {
+    static let lock = NSLock()
+    static let formatter: DateFormatter = {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yy/MM/dd HH:mm:ss.SSSS"
-        return dateFormatter.string(from: self)
+        return dateFormatter
+    }()
+}
+
+extension Date{
+    func logFormat()->String{
+        LogLensDateFormatter.lock.lock()
+        defer { LogLensDateFormatter.lock.unlock() }
+        return LogLensDateFormatter.formatter.string(from: self)
     }
 }
 

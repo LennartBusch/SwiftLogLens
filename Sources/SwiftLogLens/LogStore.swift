@@ -7,6 +7,8 @@
 import Foundation
 
 public actor LogStore{
+    private static let currentTimestampFormat = "yy/MM/dd HH:mm:ss.SSSS"
+    private static let legacyTimestampFormat = "y-MM-dd HH:mm:ss.SSSS"
     
     private init(){}
     
@@ -123,13 +125,21 @@ public actor LogStore{
         
         let formatter = DateFormatter()
         formatter.timeZone = .current
-        formatter.dateFormat = "y-MM-dd HH:mm:ss.SSSS"
+        formatter.dateFormat = Self.currentTimestampFormat
+        
+        let legacyFormatter = DateFormatter()
+        legacyFormatter.timeZone = .current
+        legacyFormatter.dateFormat = Self.legacyTimestampFormat
         
         // Keep only lines whose timestamp is **after** the threshold.
         let kept = lines.filter { line in
             guard !line.isEmpty else { return false }        // skip blank lines
             let dateString = line.prefix { $0 != ";" }       // substring before the first ';'
-            guard let date = formatter.date(from: String(dateString)) else {
+            let timestamp = String(dateString)
+            guard
+                let date = formatter.date(from: timestamp)
+                    ?? legacyFormatter.date(from: timestamp)
+            else {
                 return true                                  // keep line if we can't parse date
             }
             return date >= thresholdDate
