@@ -9,7 +9,7 @@ enum LogLensCategoryMacroError: Error, CustomStringConvertible {
     }
 }
 
-public struct LogLensCategoryMacro: MemberMacro {
+public struct LogLensCategoryMacro: MemberMacro, ExtensionMacro {
     public static func expansion(
         of node: AttributeSyntax,
         providingMembersOf declaration: some DeclGroupSyntax,
@@ -34,5 +34,25 @@ public struct LogLensCategoryMacro: MemberMacro {
         """
         
         return [DeclSyntax(stringLiteral: member)]
+    }
+    
+    public static func expansion(
+        of node: AttributeSyntax,
+        attachedTo declaration: some DeclGroupSyntax,
+        providingExtensionsOf type: some TypeSyntaxProtocol,
+        conformingTo protocols: [TypeSyntax],
+        in context: some MacroExpansionContext
+    ) throws -> [ExtensionDeclSyntax] {
+        _ = node
+        _ = declaration
+        _ = protocols
+        _ = context
+        
+        let extensionSource = "extension \(type.trimmedDescription): LogLensCategoryProviding {}"
+        guard let extensionDecl = DeclSyntax(stringLiteral: extensionSource).as(ExtensionDeclSyntax.self) else {
+            return []
+        }
+        
+        return [extensionDecl]
     }
 }

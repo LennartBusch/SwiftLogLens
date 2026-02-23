@@ -89,24 +89,18 @@ public struct LogLensMacro: ExpressionMacro {
         return nil
     }
     
-    private static func contextTypeCategory(from lexicalContext: [Syntax]) -> String? {
+    private static func contextTypeExpressionSource(from lexicalContext: [Syntax]) -> String? {
         for node in lexicalContext {
-            if let classDecl = node.as(ClassDeclSyntax.self) {
-                return classDecl.name.text
-            }
-            if let actorDecl = node.as(ActorDeclSyntax.self) {
-                return actorDecl.name.text
-            }
-            if let structDecl = node.as(StructDeclSyntax.self) {
-                return structDecl.name.text
-            }
-            if let enumDecl = node.as(EnumDeclSyntax.self) {
-                return enumDecl.name.text
-            }
-            if let extensionDecl = node.as(ExtensionDeclSyntax.self) {
-                return extensionDecl.extendedType.trimmedDescription
+            if node.is(ClassDeclSyntax.self)
+                || node.is(ActorDeclSyntax.self)
+                || node.is(StructDeclSyntax.self)
+                || node.is(EnumDeclSyntax.self)
+                || node.is(ExtensionDeclSyntax.self)
+            {
+                return "Self.self"
             }
         }
+        
         return nil
     }
     
@@ -208,8 +202,8 @@ public struct LogLensMacro: ExpressionMacro {
         let callSiteFile = callSiteLocation?.file.trimmedDescription ?? "#filePath"
         let callSiteLine = callSiteLocation?.line.trimmedDescription ?? "#line"
         let contextualCategorySource = contextAnnotatedCategoryExpression(from: context.lexicalContext)
-            ?? contextTypeCategory(from: context.lexicalContext)
-            .map { "\"\($0)\"" }
+            ?? contextTypeExpressionSource(from: context.lexicalContext)
+            .map { "LogLens.category(forContextType: \($0))" }
             ?? "LogLens.defaultCategory(fromFilePath: \(callSiteFile))"
         
         let categorySource = categoryExpression?.trimmedDescription

@@ -8,6 +8,10 @@ private struct LoggerKey: Hashable {
     let category: String
 }
 
+public protocol LogLensCategoryProviding {
+    static var __loglensDeclaredCategory: String { get }
+}
+
 public struct LogLens: Sendable{
     
     public let osLogger: Logger
@@ -69,6 +73,23 @@ public struct LogLens: Sendable{
     public static func defaultCategory(from fileID: StaticString) -> String {
         let fileIDString = String(describing: fileID)
         return defaultCategory(fromFilePath: fileIDString)
+    }
+    
+    public static func category(forContextType type: Any.Type) -> String {
+        if let categoryProvider = type as? LogLensCategoryProviding.Type {
+            return categoryProvider.__loglensDeclaredCategory
+        }
+        return defaultCategory(fromType: type)
+    }
+    
+    public static func defaultCategory(fromType type: Any.Type) -> String {
+        let typeName = String(reflecting: type)
+        guard let leafTypeName = typeName.split(separator: ".").last else {
+            return "LogLens"
+        }
+        
+        let normalizedName = String(leafTypeName)
+        return normalizedName.isEmpty ? "LogLens" : normalizedName
     }
     
     public static func defaultCategory(fromFilePath filePath: String) -> String {
