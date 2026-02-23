@@ -2,7 +2,6 @@ import Foundation
 @_exported import OSLog
 import SwiftUI
 
-public typealias CustomLog = (timestamp: Date, category: String, type: OSLogType, message: String)
 
 private struct LoggerKey: Hashable {
     let subsystem: String
@@ -93,8 +92,7 @@ public struct LogLens: Sendable{
         guard storeInMemory || writeToDisk else {
             return
         }
-        
-        let log: CustomLog = (timestamp: Date(), category: category, type: level, message: message)
+        let log: CustomLog =  .init(timestamp: Date(), category: category, type: level, message: message)
         Task {
             await LogLens.store.append(log, storeInMemory: storeInMemory, writeToDisk: writeToDisk)
         }
