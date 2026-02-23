@@ -54,8 +54,10 @@ public struct LogLensView<Category: LogCategory>: View {
                     .foregroundStyle(Color.black)
                     #if os(iOS)
                     .pickerStyle(.automatic)
-                    #else
+                    #elseif os(watchOS)
                     .pickerStyle(.navigationLink)
+                    #else
+                    .pickerStyle(.menu)
                     #endif
                     if !LogLensConfig.storeCopyOnWrite{
                         if !viewModel.fetching{
@@ -95,8 +97,8 @@ public struct LogLensView<Category: LogCategory>: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(Color.red)
                 }
-                if let category = log.category{
-                    Text(category.rawValue.capitalized)
+                if !log.category.isEmpty {
+                    Text(log.category.capitalized)
                 }
             }
             Text(log.timestamp.logFormat())
@@ -109,7 +111,7 @@ public struct LogLensView<Category: LogCategory>: View {
     
     func filter(by category: Category?, logs: [CustomLog])->[CustomLog]{
         guard let category else{ return logs}
-        return viewModel.customLogs.filter{$0.category?.rawValue == category.rawValue}
+        return viewModel.customLogs.filter { $0.category == category.rawValue }
 
     }
     

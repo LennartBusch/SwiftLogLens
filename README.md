@@ -87,6 +87,20 @@ logger.log(level: .error, "An error message")
 
 ```
 
+### `#loglens` macro
+
+For clickable call sites in the Xcode log console, use the macro-based API:
+
+```swift
+#loglens("Loaded view")
+#loglens(.error, "Network failed")
+#loglens(category: "networking", .debug, "Request started")
+```
+
+The macro expands the `Logger.log(...)` call at the caller location, so Xcode can jump to the source line that emitted the log.
+
+If you do not pass `category`, LogLens derives it from the filename (without `.swift`).
+
   
 
 ## Configuration

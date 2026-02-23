@@ -78,11 +78,8 @@ extension OSLogEntry{
         }
     }
     
-    func toCustomLog(type: any LogCategory.Type)->CustomLog?{
-        if let category = type.init(rawValue: self.categoryString){
-            return (timestamp: self.date,category: category,type: self.type, message: self.composedMessage)
-        }
-        return nil        
+    func toCustomLog(type _: any LogCategory.Type)->CustomLog?{
+        return (timestamp: self.date, category: self.categoryString, type: self.type, message: self.composedMessage)
     }
 }
 
@@ -103,8 +100,6 @@ extension OSLogType{
         return switch self{
         case .debug:
             "debug"
-        case .info:
-            "info"
         case .info:
             "info"
         case .error:

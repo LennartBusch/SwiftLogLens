@@ -10,7 +10,7 @@ public actor LogStore{
     
     private init(){
         if let path = logURL , !FileManager.default.fileExists(atPath: path.path()){
-            let string = "date;subsystem;type;message\n"
+            let string = "date;category;type;message\n"
             try?  string.appendToURL(fileURL: path)
         }
     }
@@ -44,7 +44,7 @@ public actor LogStore{
     
     func writeLog(_ log: CustomLog){
         if let logURL{
-            try? "\(log.timestamp.logFormat());\(log.category?.rawValue.uppercased() ?? "");\(log.type.levelDescription);\(log.message)\n".appendToURL(fileURL: logURL)
+            try? "\(log.timestamp.logFormat());\(log.category.uppercased());\(log.type.levelDescription);\(log.message)\n".appendToURL(fileURL: logURL)
         }
     }
         
@@ -89,4 +89,3 @@ public actor LogStore{
         try? newContent.write(to: fileURL, atomically: true, encoding: .utf8)
     }
 }
-
