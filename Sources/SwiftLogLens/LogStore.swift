@@ -22,7 +22,7 @@ public actor LogStore{
     private var persistentFileHandle: FileHandle?
     private var persistentFileURL: URL?
     
-    @MainActor
+    
     public static var logURL: URL? {
         if let appgroup = LogLensConfig.appGroup {
             return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appgroup)?.appending(path: "logLenslogs.csv")
@@ -35,8 +35,7 @@ public actor LogStore{
             return FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appgroup)?.appending(path: "logLenslogs.csv")
         }
         return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appending(path: "logLenslogs.csv")
-    }
-    
+    }    
     
     func clearLogs(){
         logs.removeAll()
