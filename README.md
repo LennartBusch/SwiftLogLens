@@ -1,90 +1,126 @@
 # SwiftLogLens
 
-SwiftLogLens is a wrapper around Apple Unified Logging with a macro-first API.
+SwiftLogLens is a wrapper around Apple Unified Logging with an in-app viewer and optional log mirroring.
 
-Since `2.0`, the recommended logging entry point is `#loglens(...)`:
-- clickable call-sites in Xcode console
-- low overhead runtime path
-- optional in-memory / on-disk mirroring for later inspection
+Since `2.1`, the package is split into two products:
+
+- `SwiftLogLens`: core runtime product with no macro dependency
+- `SwiftLogLensMacros`: optional macro product for `#loglens(...)` and `@LoglensCategory(...)`
+
+Use the core product by default if you care about archive and incremental build speed.
 
 ## Why this package exists
 
-SwiftLogLens exists to make Unified Logging more practical inside apps at runtime.
+SwiftLogLens makes Unified Logging easier to use inside apps while still keeping Apple's logging system as the source of truth.
 
-- On iOS/watchOS, reading logs during runtime is more limited than on macOS.
-- On watchOS in particular, log retrieval can require extra setup/profiles during development.
-- App-side debugging often needs an in-app log viewer and optional persistence, not only external Console tools.
+- On iOS/watchOS, reading logs at runtime is more limited than on macOS.
+- App-side debugging often needs an in-app log viewer and optional persistence.
+- Many apps want ergonomic logging without pulling macros into every build.
 
-`#loglens(...)` keeps OS logging as the source of truth while optionally mirroring entries to memory/disk when you need reliable in-app inspection.
-
-## Setup
-
-`LogCategory` is optional.
-
-- If you define a `LogCategory` enum, filtering/display in `LogLensView` is easier and strongly typed.
-- If you skip it, you can still use `#loglens(...)` with string categories (or automatic default categories).
-
-### Optional typed categories (`LogCategory`)
+## Optional typed categories
 
 ```swift
 import SwiftLogLens
 
 enum Logs: String, LogCategory {
     var id: Self { self }
+
     case network
     case ui
     case networkUtil
 }
 ```
 
-### Without typed categories
+## Core logging
+
+The core product is now the recommended entry point.
+
+### File-based logger
 
 ```swift
 import SwiftLogLens
+
+private let log = LogLens.logger()
+
+log("Boot finished")
+log.info("Request started")
+log.error("Network request failed")
+```
+
+`LogLens.logger()` defaults the category to the current file name.
+
+### Type-based logger
+
+```swift
+import SwiftLogLens
+
+final class NetworkClient: LogLensLogging {
+    func fetch() {
+        Self.log.debug("Request started")
+    }
+}
+```
+
+If you prefer an explicit stored logger, use the concrete type name:
+
+```swift
+import SwiftLogLens
+
+final class NetworkClient {
+    private static let log = LogLens.logger(for: NetworkClient.self)
+
+    func fetch() {
+        Self.log.debug("Request started")
+    }
+}
+```
+
+### Explicit category
+
+```swift
+import SwiftLogLens
+
+let log = LogLens.logger("network")
+let typedLog = LogLens.logger(Logs.network)
+
+log.info("Started")
+typedLog.error("Request failed")
+```
+
+### Direct `Logger` access
+
+If you want raw `OSLog` features, grab a `Logger` directly from the core product:
+
+```swift
+import SwiftLogLens
+
+let logger = LogLens.osLogger(for: NetworkClient.self)
+logger.log("Fetched token \(token, privacy: .private)")
+```
+
+## Optional macros
+
+Macros are now opt-in.
+
+```swift
+import SwiftLogLens
+import SwiftLogLensMacros
 
 #loglens("Boot finished")
 #loglens(category: "network", .info, "Request started")
 ```
 
-## Recommended logging (`2.0+`)
+If `category:` is not passed, the macro resolves category in this order:
 
-### Basic
-
-```swift
-#loglens("View appeared")
-#loglens(.error, "Network request failed")
-#loglens(category: "network", .debug, "Request started")
-```
-
-### Privacy
+1. `@LoglensCategrory(...)` / `@LoglensCategory(...)` on the enclosing type
+2. Enclosing type name
+3. File name
 
 ```swift
-#loglens("Fetched token \(token)", privacy: .private)
-#loglens("Auth date \(Date())", privacy: .sensitive)
-```
+import SwiftLogLens
+import SwiftLogLensMacros
 
-### Default category resolution
-
-If `category:` is not passed, LogLens resolves category in this order:
-1. `@LoglensCategrory(...)` / `@LoglensCategory(...)` on enclosing type
-2. Enclosing type name (`class` / `struct` / `actor` / `enum`)
-3. File name (without `.swift`)
-
-```swift
 @LoglensCategory(Logs.networkUtil)
-final class NetworkUtil {
-    func fetch() {
-        #loglens("Request started") // category: "networkUtil"
-    }
-}
-```
-
-If you want stronger autocomplete for cases, use the typed overload:
-
-```swift
-typealias AppLogs = Logs
-
-@LoglensCategory(AppLogs.self, .networkUtil)
 final class NetworkUtil {
     func fetch() {
         #loglens("Request started")
@@ -92,23 +128,18 @@ final class NetworkUtil {
 }
 ```
 
+Macros preserve the convenient call-site behavior, but they also add compile-time overhead. Keep them optional unless you specifically want that tradeoff.
+
 ## Config
 
 ```swift
-// Unified log subsystem (defaults to bundle identifier)
 LogLensConfig.setSubsystem("com.mycompany.myapp")
-
-// Optional mirrors
 LogLensConfig.storeInMemory(true)
 LogLensConfig.storeOnDisk(true)
-
-// Optional app group for shared file location
 LogLensConfig.setAppGroup("group.com.mycompany.myapp")
 ```
 
 ## Viewing logs in-app
-
-`LogLensView` fetches logs from `OSLogStore` and displays them.
 
 ```swift
 NavigationStack {
@@ -119,27 +150,6 @@ NavigationStack {
 ## Disk log file access
 
 ```swift
-// MainActor property
 let url = LogStore.logURL
-```
-
-Prune old persisted entries:
-
-```swift
 await LogLens.store.pruneLogs(olderThanDays: 5)
 ```
-
-## Legacy API (before `2.0`)
-
-Before `2.0`, logging was mainly done through `LogLens(category:)` + `osLogger` / `log(...)`.
-This is still supported for compatibility, but no longer recommended.
-
-```swift
-let lens = LogLens(category: Logs.network)
-let logger = lens.osLogger
-
-logger.log("Message")
-lens.log(level: .error, "Fallback wrapper log")
-```
-
-Use `#loglens(...)` for new code.

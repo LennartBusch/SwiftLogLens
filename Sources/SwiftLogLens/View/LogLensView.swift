@@ -12,7 +12,7 @@ import OSLog
 public struct LogLensView<Category: LogCategory>: View {
     private let categoryType: Category.Type
     @StateObject var viewModel = ViewModel()
-    @State var category: Category? = nil
+    @State private var selectedCategoryName: String? = nil
     
     
     public init (categoryType: Category.Type) {
@@ -21,7 +21,7 @@ public struct LogLensView<Category: LogCategory>: View {
     
     public var body: some View {
         List{
-            ForEach(filter(by: category, logs: viewModel.customLogs).reversed(), id: \.timestamp){log in
+            ForEach(filter(by: selectedCategoryName, logs: viewModel.customLogs).reversed(), id: \.timestamp){log in
                 NavigationLink(destination: {
                     ScrollView{
                         logBody(log: log, preview: false)
@@ -38,14 +38,14 @@ public struct LogLensView<Category: LogCategory>: View {
         .toolbar{
             ToolbarItemGroup(placement: .primaryAction, content: {
                 HStack{
-                    Picker("",selection: $category, content: {
-                        Text("All").tag(nil as Category?)
-                        ForEach(Array(categoryType.allCases)){category in
-                            Text(category.rawValue.capitalized)
+                    Picker("",selection: $selectedCategoryName, content: {
+                        Text("All").tag(nil as String?)
+                        ForEach(availableCategoryNames, id: \.self) { categoryName in
+                            Text(categoryName.capitalized)
                                 .foregroundStyle(Color.white)
                                 .font(.headline)
                                 .padding(.top, -20)
-                                .tag(category)
+                                .tag(Optional(categoryName))
                         }
                     })
                     .labelsHidden()
@@ -65,7 +65,7 @@ public struct LogLensView<Category: LogCategory>: View {
 #if os(iOS)
                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 #endif
-                                viewModel.loadLogs(for: category, as: categoryType)
+                                viewModel.loadLogs(for: selectedCategoryName)
                             }, label: {
                                 Image(systemName: "arrow.counterclockwise")
                             })
@@ -109,16 +109,31 @@ public struct LogLensView<Category: LogCategory>: View {
         .font(.footnote)
     }
     
-    func filter(by category: Category?, logs: [CustomLog])->[CustomLog]{
-        guard let category else{ return logs}
-        return logs.filter { $0.category == category.rawValue }
+    private var availableCategoryNames: [String] {
+        let declaredCategories = categoryType.allCases.map(\.rawValue)
+        let dynamicCategories = viewModel.customLogs
+            .map(\.category)
+            .filter { !$0.isEmpty }
+        return Array(Set(declaredCategories + dynamicCategories))
+            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
+    func filter(by categoryName: String?, logs: [CustomLog])->[CustomLog]{
+        guard let categoryName else { return logs }
+        return logs.filter { $0.category == categoryName }
 
     }
     
     
     func refresh(){
         Task{
-            await viewModel.reloadLocalLogs()
+            if LogLensConfig.storeCopyOnWrite {
+                await viewModel.reloadLocalLogs()
+            } else {
+                await MainActor.run {
+                    viewModel.loadLogs(for: selectedCategoryName)
+                }
+            }
         }
     }
     

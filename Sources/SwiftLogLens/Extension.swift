@@ -87,7 +87,7 @@ extension OSLogEntry{
         }
     }
     
-    func toCustomLog(type _: any LogCategory.Type)->CustomLog?{
+    func toCustomLog() -> CustomLog? {
         return .init(timestamp: self.date, category: self.categoryString, type: self.type, message: self.composedMessage)
     }
 }

@@ -23,14 +23,14 @@ extension LogLensView{
         /// - Parameter category: The category of logs that should be loaded
         ///
         /// By default this method loads all logs of the default subsystem
-        func loadLogs(for category: (any LogCategory)? = nil, as logCategoryType: Category.Type){
+        func loadLogs(for categoryName: String? = nil){
             let pastDay: Double = -1 * 60 * 60 * 24
             fetching = true
             DispatchQueue.global(qos: .utility).async {
                 guard let store = try? OSLogStore(scope: .currentProcessIdentifier) else {return}
                 var predicate: NSPredicate
-                if let category{
-                    predicate = NSPredicate(format: "(subsystem == %@) && (category IN %@)", LogLensConfig.defaultSubSystem, [category.rawValue])
+                if let categoryName, !categoryName.isEmpty {
+                    predicate = NSPredicate(format: "(subsystem == %@) && (category IN %@)", LogLensConfig.defaultSubSystem, [categoryName])
                 }
                 else{
                     predicate = NSPredicate(format: "subsystem == %@", LogLensConfig.defaultSubSystem)
@@ -39,7 +39,7 @@ extension LogLensView{
                 let osLogs = (try? store.getEntries(at: pos, matching: predicate).compactMap({$0})) ?? []
                 DispatchQueue.main.async {
                     self.logs = osLogs
-                    self.customLogs = osLogs.compactMap{$0.toCustomLog(type: logCategoryType )}
+                    self.customLogs = osLogs.compactMap { $0.toCustomLog() }
                     self.fetching = false
                 }
             }

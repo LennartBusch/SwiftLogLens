@@ -8,29 +8,37 @@ let package = Package(
     name: "SwiftLogLens",
     platforms: [.iOS(.v16), .watchOS(.v9) , .macOS(.v13)],
     products: [
-        // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
             name: "SwiftLogLens",
             targets: ["SwiftLogLens"]),
+        .library(
+            name: "SwiftLogLensMacros",
+            targets: ["SwiftLogLensMacros"]),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0"),
     ],
     targets: [
-        // Targets are the basic building blocks of a package, defining a module or a test suite.
-        // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "SwiftLogLens",
-            dependencies: ["SwiftLogLensMacros"]
+            name: "SwiftLogLens"
+        ),
+        .target(
+            name: "SwiftLogLensMacros",
+            dependencies: [
+                "SwiftLogLens",
+                "SwiftLogLensCompilerPlugin",
+            ],
+            path: "Sources/SwiftLogLensMacrosAPI"
         ),
         .macro(
-            name: "SwiftLogLensMacros",
+            name: "SwiftLogLensCompilerPlugin",
             dependencies: [
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
-            ]
+            ],
+            path: "Sources/SwiftLogLensMacros"
         ),
     ]
 )
