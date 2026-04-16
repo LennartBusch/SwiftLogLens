@@ -3,7 +3,7 @@ import SwiftSyntaxMacros
 
 enum LogLensCategoryMacroError: Error, CustomStringConvertible {
     case missingCategoryArgument
-    
+
     var description: String {
         "@LoglensCategrory requires one LogCategory argument, e.g. @LoglensCategrory(Logs.networkUtil)."
     }
@@ -17,7 +17,7 @@ public struct LogLensCategoryMacro: MemberMacro, ExtensionMacro {
     ) throws -> [DeclSyntax] {
         _ = declaration
         _ = context
-        
+
         guard
             let arguments = node.arguments,
             case let .argumentList(argumentList) = arguments,
@@ -25,17 +25,17 @@ public struct LogLensCategoryMacro: MemberMacro, ExtensionMacro {
         else {
             throw LogLensCategoryMacroError.missingCategoryArgument
         }
-        
+
         let categoryExpressionSource = firstArgument.expression.trimmedDescription
         let member = """
         public nonisolated static var __loglensDeclaredCategory: String {
             (\(categoryExpressionSource)).rawValue
         }
         """
-        
+
         return [DeclSyntax(stringLiteral: member)]
     }
-    
+
     public static func expansion(
         of node: AttributeSyntax,
         attachedTo declaration: some DeclGroupSyntax,
@@ -47,12 +47,12 @@ public struct LogLensCategoryMacro: MemberMacro, ExtensionMacro {
         _ = declaration
         _ = protocols
         _ = context
-        
+
         let extensionSource = "extension \(type.trimmedDescription): LogLensCategoryProviding {}"
         guard let extensionDecl = DeclSyntax(stringLiteral: extensionSource).as(ExtensionDeclSyntax.self) else {
             return []
         }
-        
+
         return [extensionDecl]
     }
 }

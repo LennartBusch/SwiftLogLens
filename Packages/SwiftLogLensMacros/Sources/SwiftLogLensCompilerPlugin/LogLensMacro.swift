@@ -3,7 +3,7 @@ import SwiftSyntaxMacros
 
 enum LogLensMacroError: Error, CustomStringConvertible {
     case unsupportedArguments
-    
+
     var description: String {
         "Unsupported #loglens arguments."
     }
@@ -14,34 +14,34 @@ public struct LogLensMacro: ExpressionMacro {
         "LoglensCategrory",
         "LoglensCategory",
     ]
-    
+
     private static func isSupportedCategoryAttribute(_ attributeName: String) -> Bool {
         let trimmed = attributeName
         if supportedCategoryAttributeNames.contains(trimmed) {
             return true
         }
-        
+
         if let baseName = trimmed.split(separator: ".").last {
             return supportedCategoryAttributeNames.contains(String(baseName))
         }
-        
+
         return false
     }
-    
+
     private static func categoryExpression(from attributes: AttributeListSyntax?) -> String? {
         guard let attributes else {
             return nil
         }
-        
+
         for element in attributes {
             guard let attribute = element.as(AttributeSyntax.self) else {
                 continue
             }
-            
+
             guard isSupportedCategoryAttribute(attribute.attributeName.trimmedDescription) else {
                 continue
             }
-            
+
             guard
                 let arguments = attribute.arguments,
                 case let .argumentList(argumentList) = arguments,
@@ -49,19 +49,19 @@ public struct LogLensMacro: ExpressionMacro {
             else {
                 continue
             }
-            
+
             if argumentList.count >= 2 {
                 let secondArgumentIndex = argumentList.index(after: argumentList.startIndex)
                 let secondArgument = argumentList[secondArgumentIndex]
                 return "(\(secondArgument.expression.trimmedDescription)).rawValue"
             }
-            
+
             return "(\(firstArgument.expression.trimmedDescription)).rawValue"
         }
-        
+
         return nil
     }
-    
+
     private static func contextAnnotatedCategoryExpression(from lexicalContext: [Syntax]) -> String? {
         for node in lexicalContext {
             if let classDecl = node.as(ClassDeclSyntax.self),
@@ -85,10 +85,10 @@ public struct LogLensMacro: ExpressionMacro {
                 return categoryExpression
             }
         }
-        
+
         return nil
     }
-    
+
     private static func contextTypeExpressionSource(from lexicalContext: [Syntax]) -> String? {
         for node in lexicalContext {
             if node.is(ClassDeclSyntax.self)
@@ -100,16 +100,16 @@ public struct LogLensMacro: ExpressionMacro {
                 return "Self.self"
             }
         }
-        
+
         return nil
     }
-    
+
     private static func hasPrivacyArgument(_ expressions: LabeledExprListSyntax) -> Bool {
         expressions.contains { labeledExpression in
             labeledExpression.label?.text == "privacy"
         }
     }
-    
+
     private static func loggerMessageSource(
         from messageExpression: ExprSyntax,
         privacySource: String,
@@ -118,22 +118,22 @@ public struct LogLensMacro: ExpressionMacro {
         guard let stringLiteral = messageExpression.as(StringLiteralExprSyntax.self) else {
             return "\"\\((\(fallbackMessageExpression)), privacy: \(privacySource))\""
         }
-        
+
         var source = ""
         source += stringLiteral.openingPounds?.text ?? ""
         source += stringLiteral.openingQuote.text
-        
+
         for segment in stringLiteral.segments {
             if let stringSegment = segment.as(StringSegmentSyntax.self) {
                 source += stringSegment.content.text
                 continue
             }
-            
+
             guard let expressionSegment = segment.as(ExpressionSegmentSyntax.self) else {
                 source += segment.description
                 continue
             }
-            
+
             let expressionsSource = expressionSegment.expressions.trimmedDescription
             let sourceWithPrivacy: String
             if hasPrivacyArgument(expressionSegment.expressions) {
@@ -143,19 +143,19 @@ public struct LogLensMacro: ExpressionMacro {
             } else {
                 sourceWithPrivacy = "\(expressionsSource), privacy: \(privacySource)"
             }
-            
+
             source += expressionSegment.backslash.text
             source += expressionSegment.pounds?.text ?? ""
             source += expressionSegment.leftParen.text
             source += sourceWithPrivacy
             source += expressionSegment.rightParen.text
         }
-        
+
         source += stringLiteral.closingQuote.text
         source += stringLiteral.closingPounds?.text ?? ""
         return source
     }
-    
+
     public static func expansion(
         of node: some FreestandingMacroExpansionSyntax,
         in context: some MacroExpansionContext
@@ -163,13 +163,13 @@ public struct LogLensMacro: ExpressionMacro {
         var unlabeledExpressions: [ExprSyntax] = []
         var categoryExpression: ExprSyntax?
         var privacyExpression: ExprSyntax?
-        
+
         for argument in node.arguments {
             guard let label = argument.label?.text else {
                 unlabeledExpressions.append(argument.expression)
                 continue
             }
-            
+
             switch label {
             case "category":
                 categoryExpression = argument.expression
@@ -179,10 +179,10 @@ public struct LogLensMacro: ExpressionMacro {
                 throw LogLensMacroError.unsupportedArguments
             }
         }
-        
+
         let levelExpression: ExprSyntax
         let messageExpression: ExprSyntax
-        
+
         switch unlabeledExpressions.count {
         case 1:
             levelExpression = ExprSyntax(stringLiteral: ".default")
@@ -193,7 +193,7 @@ public struct LogLensMacro: ExpressionMacro {
         default:
             throw LogLensMacroError.unsupportedArguments
         }
-        
+
         let callSiteLocation = context.location(
             of: node,
             at: .afterLeadingTrivia,
@@ -205,7 +205,7 @@ public struct LogLensMacro: ExpressionMacro {
             ?? contextTypeExpressionSource(from: context.lexicalContext)
             .map { "LogLens.category(forContextType: \($0))" }
             ?? "LogLens.defaultCategory(fromFilePath: \(callSiteFile))"
-        
+
         let categorySource = categoryExpression?.trimmedDescription
             ?? contextualCategorySource
         let levelSource = levelExpression.trimmedDescription
@@ -246,7 +246,7 @@ public struct LogLensMacro: ExpressionMacro {
             }
         }())
         """
-        
+
         return ExprSyntax(stringLiteral: expansion)
     }
 }

@@ -2,10 +2,10 @@
 
 SwiftLogLens is a wrapper around Apple Unified Logging with an in-app viewer and optional log mirroring.
 
-Since `2.1`, the package is split into two products:
+Since `2.1`, the project is split into two packages:
 
-- `SwiftLogLens`: core runtime product with no macro dependency
-- `SwiftLogLensMacros`: optional macro product for `#loglens(...)` and `@LoglensCategory(...)`
+- `SwiftLogLens`: core runtime package with no macro dependency
+- `SwiftLogLensMacros`: companion macro package for `#loglens(...)` and `@LoglensCategory(...)`
 
 Use the core product by default if you care about archive and incremental build speed.
 
@@ -100,7 +100,9 @@ logger.log("Fetched token \(token, privacy: .private)")
 
 ## Optional macros
 
-Macros are now opt-in.
+Macros are now opt-in and live in the separate `SwiftLogLensMacros` package.
+
+For local development in this repository, the companion package lives at `Packages/SwiftLogLensMacros`.
 
 ```swift
 import SwiftLogLens

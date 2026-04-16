@@ -1,6 +1,10 @@
 .DS_Store
 /.build
-/Packages
+/Packages/*
+!/Packages/SwiftLogLensMacros/
+!/Packages/SwiftLogLensMacros/**
+/Packages/SwiftLogLensMacros/.build
+/Packages/SwiftLogLensMacros/Package.resolved
 xcuserdata/
 DerivedData/
 .swiftpm/configuration/registries.json
