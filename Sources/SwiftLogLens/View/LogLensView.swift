@@ -10,12 +10,12 @@ import SwiftUI
 import OSLog
 
 public struct LogLensView<Category: LogCategory>: View {
-    private let categoryType: Category.Type
+    private let categoryType: Category.Type?
     @StateObject var viewModel = ViewModel()
     @State private var selectedCategoryName: String? = nil
     
     
-    public init (categoryType: Category.Type) {
+    public init (categoryType: Category.Type? = nil) {
         self.categoryType = categoryType
     }
     
@@ -110,7 +110,7 @@ public struct LogLensView<Category: LogCategory>: View {
     }
     
     private var availableCategoryNames: [String] {
-        let declaredCategories = categoryType.allCases.map(\.rawValue)
+        let declaredCategories = categoryType?.allCases.map(\.rawValue) ?? []
         let dynamicCategories = viewModel.customLogs
             .map(\.category)
             .filter { !$0.isEmpty }
