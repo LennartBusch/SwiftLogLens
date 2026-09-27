@@ -9,14 +9,17 @@ import Foundation
 import SwiftUI
 import OSLog
 
-public struct LogLensView<Category: LogCategory>: View {
-    private let categoryType: Category.Type?
-    @StateObject var viewModel = ViewModel()
-    @State private var selectedCategoryName: String? = nil
+public struct LogLensView: View {
+    private let declaredCategoryNames: [String]
+    @StateObject private var viewModel = ViewModel()
+    @State private var selectedCategoryName: String?
     
+    public init() {
+        declaredCategoryNames = []
+    }
     
-    public init (categoryType: Category.Type? = nil) {
-        self.categoryType = categoryType
+    public init<Category: LogCategory>(categoryType: Category.Type) {
+        declaredCategoryNames = categoryType.allCases.map(\.rawValue)
     }
     
     public var body: some View {
@@ -110,11 +113,10 @@ public struct LogLensView<Category: LogCategory>: View {
     }
     
     private var availableCategoryNames: [String] {
-        let declaredCategories = categoryType?.allCases.map(\.rawValue) ?? []
-        let dynamicCategories = viewModel.customLogs
+        let dynamicCategoryNames = viewModel.customLogs
             .map(\.category)
             .filter { !$0.isEmpty }
-        return Array(Set(declaredCategories + dynamicCategories))
+        return Array(Set(declaredCategoryNames + dynamicCategoryNames))
             .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
 
