@@ -10,7 +10,7 @@ import SwiftUI
 #if canImport(MessageUI)
 import MessageUI
 
-public struct MailButton: View {
+public struct LogLensMailButton: View {
     @State private var showMailComposer = false
     @State private var showMailUnavailableAlert = false
     var attachmentURL: URL?
